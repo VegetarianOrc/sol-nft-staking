@@ -14,7 +14,7 @@ where
 }
 
 #[account]
-pub struct GmootStaker {
+pub struct GmootStakeRewarder {
     pub authority: Pubkey,
     pub reward_mint: Pubkey,
     pub reward_authority_bump: u8,
@@ -25,7 +25,7 @@ pub struct GmootStaker {
 #[account]
 pub struct GmootStakeAccount {
     pub owner: Pubkey,
-    pub staker: Pubkey,
+    pub rewarder: Pubkey,
     pub num_staked: u16,
     pub bump: u8,
     pub last_claimed: i64,
