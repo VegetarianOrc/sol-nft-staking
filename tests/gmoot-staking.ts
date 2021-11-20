@@ -26,7 +26,6 @@ describe('gmoot-staking', () => {
     let nftMint = null;
     let nftTokenAccount = null;
     let nftVault = null;
-    let nftVaultBump = 0;
 
 
     before(async () => {
@@ -144,6 +143,69 @@ describe('gmoot-staking', () => {
       expect(nftVaultAccount.amount.toNumber()).to.equal(1);
     });
 
+    it('claims pending rewards', async () => {
+      const seconds = 2;
+      //wait to allow rewards to accumulate
+      await sleep(provider.connection, seconds);
+
+      await gmootStakingProgram.rpc.claim({
+        accounts: {
+          owner: owner.publicKey,
+          rewarder,
+          rewardAuthority,
+          stakeAccount,
+          rewardMint: rewardMint.publicKey,
+          rewardAccount: rewardTokenAccount,
+          tokenProgram: splToken.TOKEN_PROGRAM_ID,
+          clock: clockSysvar,
+        },
+        signers: [owner]
+      });
+
+      const rewardTokenAccountData = await rewardMint.getAccountInfo(rewardTokenAccount);
+      expect(rewardTokenAccountData.amount.toNumber()).to.equal(seconds * rewardRate);
+    });
+
+    it('unstakes an NFT', async () => {
+      //sleep one more second to check that we claim pending rewards on unstake
+      await sleep(provider.connection, 1);
+
+      await gmootStakingProgram.rpc.unstakeGmoot({
+        accounts: {
+          owner: owner.publicKey,
+          rewarder,
+          rewardAuthority,
+          stakeAccount,
+          rewardMint: rewardMint.publicKey,
+          rewardTokenAccount,
+          nftMint: nftMint.publicKey,
+          nftTokenAccount,
+          nftVault,
+          tokenProgram: splToken.TOKEN_PROGRAM_ID,
+          clock: clockSysvar,
+        },
+        signers: [owner],
+      });
+      const rewardTokenAccountData = await rewardMint.getAccountInfo(rewardTokenAccount);
+      expect(rewardTokenAccountData.amount.toNumber()).to.equal(3 * rewardRate);
+    });
+
   });
 
 });
+
+// Polls the network and returns once the block time has increased by seconds.
+const sleep = async (connection: anchor.web3.Connection, seconds: number, startTime: number | null = null) => {
+  let time = startTime;
+  if (time == null) {
+    let slot = await connection.getSlot();
+    time = await connection.getBlockTime(slot);
+  }
+  let elapsed = 0;
+  while (elapsed < seconds) {
+    let slot = await connection.getSlot();
+    let newTime = await connection.getBlockTime(slot);
+    elapsed += newTime - time;
+    time = newTime;
+  }
+};

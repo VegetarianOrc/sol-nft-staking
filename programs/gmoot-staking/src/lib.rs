@@ -21,7 +21,7 @@ declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");
 
 #[program]
 pub mod gmoot_staking {
-    use anchor_spl::token::{self, Transfer};
+    use anchor_spl::token::{self, CloseAccount, Transfer};
 
     use super::*;
     pub fn initialize_rewarder(
@@ -166,6 +166,19 @@ pub mod gmoot_staking {
             stake_account_signer,
         );
         token::transfer(tx_ctx, 1)?;
+
+        //close empty nft vault and return rent to owner
+        let close_accounts = CloseAccount {
+            account: nft_vault.to_account_info(),
+            destination: owner.to_account_info(),
+            authority: stake_account.to_account_info(),
+        };
+        let close_ctx = CpiContext::new_with_signer(
+            token_program.to_account_info(),
+            close_accounts,
+            stake_account_signer,
+        );
+        token::close_account(close_ctx)?;
 
         Ok(())
     }
@@ -400,7 +413,7 @@ pub struct StakeGmoot<'info> {
 #[derive(Accounts)]
 pub struct UnstakeGmoot<'info> {
     /// The owner of the stake account
-    #[account(signer)]
+    #[account(mut, signer)]
     pub owner: AccountInfo<'info>,
 
     /// The rewarder account for the collection
@@ -425,6 +438,7 @@ pub struct UnstakeGmoot<'info> {
 
     /// The Mint of the rewarded token
     #[account(
+        mut,
         address = rewarder.reward_mint,
     )]
     pub reward_mint: Box<Account<'info, Mint>>,
@@ -438,6 +452,7 @@ pub struct UnstakeGmoot<'info> {
     pub reward_token_account: Account<'info, TokenAccount>,
 
     /// The Mint of the NFT
+    #[account()]
     pub nft_mint: Box<Account<'info, Mint>>,
 
     /// The token account from the owner
@@ -457,8 +472,6 @@ pub struct UnstakeGmoot<'info> {
     pub nft_vault: Account<'info, TokenAccount>,
 
     pub token_program: Program<'info, Token>,
-    pub system_program: Program<'info, System>,
-    pub rent: Sysvar<'info, Rent>,
     pub clock: Sysvar<'info, Clock>,
 }
 
@@ -483,6 +496,7 @@ pub struct Claim<'info> {
 
     /// The Mint of the rewarded token
     #[account(
+        mut,
         address = rewarder.reward_mint,
     )]
     pub reward_mint: Account<'info, Mint>,
