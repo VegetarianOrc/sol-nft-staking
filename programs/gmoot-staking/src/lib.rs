@@ -26,6 +26,7 @@ pub mod gmoot_staking {
     use super::*;
     pub fn initialize_rewarder(
         ctx: Context<InitializeRewarder>,
+        _rewarder_bump: u8,
         reward_authority_bump: u8,
         reward_rate: u64,
     ) -> ProgramResult {
@@ -248,11 +249,13 @@ pub fn transfer_reward<'info>(
 }
 
 #[derive(Accounts)]
-#[instruction(reward_authority_bump: u8)]
+#[instruction(rewarder_bump: u8, reward_authority_bump: u8)]
 pub struct InitializeRewarder<'info> {
     /// The new rewarder account to create
     #[account(
         init,
+        seeds = [GMOOT_PREFIX, REWARDER_PREFIX],
+        bump = rewarder_bump,
         space = GmootStakeRewarder::LEN,
         payer = authority,
     )]
