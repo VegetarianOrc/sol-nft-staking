@@ -2,6 +2,7 @@ import * as anchor from '@project-serum/anchor';
 import { Program } from '@project-serum/anchor';
 import { GmootStaking } from '../target/types/gmoot_staking';
 import * as splToken from '@solana/spl-token';
+import { expect } from 'chai';
 
 describe('gmoot-staking', () => {
 
@@ -21,6 +22,12 @@ describe('gmoot-staking', () => {
     const [stakeAccount, stakeAccountBump] = await anchor.web3.PublicKey.findProgramAddress([Buffer.from("gmoot"), Buffer.from("stake_account"), owner.publicKey.toBuffer()], gmootStakingProgram.programId);
     const rewardRate = 10;
     let rewardMint = null;
+    let rewardTokenAccount = null;
+    let nftMint = null;
+    let nftTokenAccount = null;
+    let nftVault = null;
+    let nftVaultBump = 0;
+
 
     before(async () => {
       console.log('airdropping to owner');
@@ -39,6 +46,49 @@ describe('gmoot-staking', () => {
         3, //deicmals
         splToken.TOKEN_PROGRAM_ID
       );
+
+      console.log("creating reward token account")
+      rewardTokenAccount = await rewardMint.createAssociatedTokenAccount(owner.publicKey);
+
+      console.log("creating NFT mint");
+      nftMint = await splToken.Token.createMint(
+        provider.connection,
+        owner,
+        owner.publicKey,
+        null,
+        0,
+        splToken.TOKEN_PROGRAM_ID
+      );
+      nftTokenAccount = await nftMint.createAssociatedTokenAccount(owner.publicKey);
+      console.log("minting nft");
+      await nftMint.mintTo(nftTokenAccount, owner, [], 1);
+      console.log("removing mint authority");
+      await nftMint.setAuthority(nftMint.publicKey, null, 'MintAuthority', owner, []);
+
+      console.log("getting nftVault token address");
+      nftVault = await splToken.Token.getAssociatedTokenAddress(
+        splToken.ASSOCIATED_TOKEN_PROGRAM_ID,
+        splToken.TOKEN_PROGRAM_ID,
+        nftMint.publicKey,
+        stakeAccount,
+        true,
+      );
+
+      console.log('creating nftVault token account');
+      let tx = new anchor.web3.Transaction();
+      tx.add(splToken.Token.createAssociatedTokenAccountInstruction(
+        splToken.ASSOCIATED_TOKEN_PROGRAM_ID,
+        splToken.TOKEN_PROGRAM_ID,
+        nftMint.publicKey,
+        nftVault,
+        stakeAccount,
+        owner.publicKey
+      ))
+
+      let txId = await provider.connection.sendTransaction(tx, [owner]);
+      await provider.connection.confirmTransaction(txId, 'confirmed');
+      
+      
     });
 
     it('initializes a rewarder', async () => {
@@ -66,6 +116,32 @@ describe('gmoot-staking', () => {
         },
         signers: [owner]
       });
+    });
+
+    it('stakes an NFT', async () => {
+      await gmootStakingProgram.rpc.stakeGmoot({
+        accounts: {
+          owner: owner.publicKey,
+          rewarder,
+          rewardAuthority,
+          stakeAccount,
+          rewardMint: rewardMint.publicKey,
+          rewardTokenAccount,
+          nftMint: nftMint.publicKey,
+          nftTokenAccount,
+          nftVault,
+          tokenProgram: splToken.TOKEN_PROGRAM_ID,
+          systemProgram,
+          rent: rentSysvar,
+          clock: clockSysvar,
+        },
+        signers: [owner]
+      });
+
+      let nftAccount = await nftMint.getAccountInfo(nftTokenAccount);
+      expect(nftAccount.amount.toNumber()).to.equal(0);
+      let nftVaultAccount = await nftMint.getAccountInfo(nftVault);
+      expect(nftVaultAccount.amount.toNumber()).to.equal(1);
     });
 
   });

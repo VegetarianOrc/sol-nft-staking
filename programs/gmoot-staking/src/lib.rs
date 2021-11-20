@@ -321,6 +321,7 @@ pub struct InitializeStakeAccount<'info> {
 }
 
 #[derive(Accounts)]
+// #[instruction(_vault_bump: u8)]
 pub struct StakeGmoot<'info> {
     /// The owner of the stake account
     #[account(mut, signer)]
@@ -348,9 +349,10 @@ pub struct StakeGmoot<'info> {
 
     /// The Mint of the rewarded token
     #[account(
+        mut,
         address = rewarder.reward_mint,
     )]
-    pub reward_mint: Account<'info, Mint>,
+    pub reward_mint: Box<Account<'info, Mint>>,
 
     /// The token account from the owner
     #[account(
@@ -361,7 +363,7 @@ pub struct StakeGmoot<'info> {
     pub reward_token_account: Account<'info, TokenAccount>,
 
     /// The Mint of the NFT
-    pub nft_mint: Account<'info, Mint>,
+    pub nft_mint: Box<Account<'info, Mint>>,
 
     /// The token account from the owner
     #[account(
@@ -384,11 +386,8 @@ pub struct StakeGmoot<'info> {
     //
     /// The account to hold the NFT while staked
     #[account(
-        init,
-        token::mint = nft_mint,
-        token::authority = stake_account,
-        payer = owner,
-        address = get_associated_token_address(&stake_account.key(), &nft_mint.key()),
+        mut,
+        address = get_associated_token_address(&stake_account.key(), &nft_mint.key())
     )]
     pub nft_vault: Account<'info, TokenAccount>,
 
@@ -428,7 +427,7 @@ pub struct UnstakeGmoot<'info> {
     #[account(
         address = rewarder.reward_mint,
     )]
-    pub reward_mint: Account<'info, Mint>,
+    pub reward_mint: Box<Account<'info, Mint>>,
 
     /// The token account from the owner
     #[account(
@@ -439,7 +438,7 @@ pub struct UnstakeGmoot<'info> {
     pub reward_token_account: Account<'info, TokenAccount>,
 
     /// The Mint of the NFT
-    pub nft_mint: Account<'info, Mint>,
+    pub nft_mint: Box<Account<'info, Mint>>,
 
     /// The token account from the owner
     #[account(
