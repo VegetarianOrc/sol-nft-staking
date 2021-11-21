@@ -15,6 +15,54 @@ describe('gmoot-staking', () => {
   const rentSysvar = anchor.web3.SYSVAR_RENT_PUBKEY;
   const clockSysvar = anchor.web3.SYSVAR_CLOCK_PUBKEY;
 
+  const mintNFT = async (connection: anchor.web3.Connection, owner: anchor.web3.Signer): Promise<[splToken.Token, anchor.web3.PublicKey]> => {
+      console.log("creating NFT mint");
+      const nftMint = await splToken.Token.createMint(
+        provider.connection,
+        owner,
+        owner.publicKey,
+        null,
+        0,
+        splToken.TOKEN_PROGRAM_ID
+      );
+      const nftTokenAccount = await nftMint.createAssociatedTokenAccount(owner.publicKey);
+      console.log("minting nft");
+      await nftMint.mintTo(nftTokenAccount, owner, [], 1);
+      console.log("removing mint authority");
+      await nftMint.setAuthority(nftMint.publicKey, null, 'MintTokens', owner, []);
+    return [nftMint, nftTokenAccount];
+  }
+
+  const createPDAAssociatedTokenAccount = async (
+    connection: anchor.web3.Connection,
+    mint: anchor.web3.PublicKey,
+    owner: anchor.web3.PublicKey,
+    payer: anchor.web3.Signer): Promise<anchor.web3.PublicKey> => {
+      console.log("finding PDA AssociatedTokenAddress");
+      const tokenAccountAddress = await splToken.Token.getAssociatedTokenAddress(
+        splToken.ASSOCIATED_TOKEN_PROGRAM_ID,
+        splToken.TOKEN_PROGRAM_ID,
+        mint,
+        owner,
+        true,
+      );
+
+      console.log('creating PDA AssociatedTokenAccount');
+      let tx = new anchor.web3.Transaction();
+      tx.add(splToken.Token.createAssociatedTokenAccountInstruction(
+        splToken.ASSOCIATED_TOKEN_PROGRAM_ID,
+        splToken.TOKEN_PROGRAM_ID,
+        mint,
+        tokenAccountAddress,
+        owner,
+        payer.publicKey
+      ))
+
+      let txId = await provider.connection.sendTransaction(tx, [payer]);
+      await provider.connection.confirmTransaction(txId, 'confirmed');
+      return tokenAccountAddress;
+  };
+
   describe('end to end test', async () => {
     const owner = anchor.web3.Keypair.generate();
     const [rewarder, rewarderBump] = await anchor.web3.PublicKey.findProgramAddress([Buffer.from("gmoot"), Buffer.from("rewarder")], gmootStakingProgram.programId);
@@ -49,44 +97,11 @@ describe('gmoot-staking', () => {
       console.log("creating reward token account")
       rewardTokenAccount = await rewardMint.createAssociatedTokenAccount(owner.publicKey);
 
-      console.log("creating NFT mint");
-      nftMint = await splToken.Token.createMint(
-        provider.connection,
-        owner,
-        owner.publicKey,
-        null,
-        0,
-        splToken.TOKEN_PROGRAM_ID
-      );
-      nftTokenAccount = await nftMint.createAssociatedTokenAccount(owner.publicKey);
-      console.log("minting nft");
-      await nftMint.mintTo(nftTokenAccount, owner, [], 1);
-      console.log("removing mint authority");
-      await nftMint.setAuthority(nftMint.publicKey, null, 'MintAuthority', owner, []);
+      console.log("minting NFT");
+      [nftMint, nftTokenAccount] = await mintNFT(provider.connection, owner);
 
-      console.log("getting nftVault token address");
-      nftVault = await splToken.Token.getAssociatedTokenAddress(
-        splToken.ASSOCIATED_TOKEN_PROGRAM_ID,
-        splToken.TOKEN_PROGRAM_ID,
-        nftMint.publicKey,
-        stakeAccount,
-        true,
-      );
-
-      console.log('creating nftVault token account');
-      let tx = new anchor.web3.Transaction();
-      tx.add(splToken.Token.createAssociatedTokenAccountInstruction(
-        splToken.ASSOCIATED_TOKEN_PROGRAM_ID,
-        splToken.TOKEN_PROGRAM_ID,
-        nftMint.publicKey,
-        nftVault,
-        stakeAccount,
-        owner.publicKey
-      ))
-
-      let txId = await provider.connection.sendTransaction(tx, [owner]);
-      await provider.connection.confirmTransaction(txId, 'confirmed');
-      
+      console.log("creating NFT Vault")
+      nftVault = await createPDAAssociatedTokenAccount(provider.connection, nftMint.publicKey, stakeAccount, owner);
       
     });
 
