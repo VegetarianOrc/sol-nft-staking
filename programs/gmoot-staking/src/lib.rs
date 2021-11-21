@@ -1,10 +1,12 @@
 use anchor_lang::prelude::*;
 
 pub mod anchor_metaplex;
+pub mod errors;
 pub mod state;
 
 use anchor_spl::associated_token::get_associated_token_address;
 use anchor_spl::token::{self, Mint, MintTo, Token, TokenAccount};
+use errors::*;
 use state::*;
 
 const GMOOT_PREFIX: &[u8] = b"gmoot";
@@ -148,7 +150,8 @@ pub mod gmoot_staking {
         let stake_account_seeds = &[
             GMOOT_PREFIX,
             ACCOUNT_PREFIX,
-            &owner.key.to_bytes(),
+            &rewarder.key().to_bytes(),
+            &owner.key().to_bytes(),
             &[stake_account.bump],
         ];
 
@@ -287,7 +290,7 @@ pub struct InitializeRewarder<'info> {
 
     /// The SPL Mint of the reward token. Must have the reward authority mint authority
     #[account(
-        constraint = reward_mint.mint_authority.contains(&reward_authority.key())
+        constraint = reward_mint.mint_authority.contains(&reward_authority.key()) @ StakingError::RewarderNotMintAuthority
     )]
     pub reward_mint: Account<'info, Mint>,
 
@@ -300,12 +303,12 @@ pub struct UpdateRewardRate<'info> {
     /// The new rewarder account to updtae
     #[account(
         mut,
-        has_one = authority,
+        has_one = authority @ StakingError::InvalidRewarderAuthority,
     )]
     pub rewarder: Account<'info, GmootStakeRewarder>,
 
     /// The owner of the rewarder account
-    #[account(mut, signer)]
+    #[account(signer)]
     pub authority: AccountInfo<'info>,
 }
 
@@ -321,7 +324,7 @@ pub struct InitializeStakeAccount<'info> {
         init,
         payer = owner,
         space = GmootStakeAccount::LEN,
-        seeds = [GMOOT_PREFIX, ACCOUNT_PREFIX, &owner.key.to_bytes()],
+        seeds = [GMOOT_PREFIX, ACCOUNT_PREFIX, &rewarder.key().to_bytes(), &owner.key().to_bytes()],
         bump = bump,
     )]
     pub stake_account: Account<'info, GmootStakeAccount>,
@@ -354,8 +357,9 @@ pub struct StakeGmoot<'info> {
     /// The stake account for the owner
     #[account(
         mut,
-        has_one = rewarder,
-        seeds = [GMOOT_PREFIX, ACCOUNT_PREFIX, &owner.key.to_bytes()],
+        has_one = rewarder @ StakingError::InvalidRewarder,
+        has_one = owner @ StakingError::InvalidOwnerForStakeAccount,
+        seeds = [GMOOT_PREFIX, ACCOUNT_PREFIX, &rewarder.key().to_bytes(), &owner.key().to_bytes()],
         bump = stake_account.bump,
     )]
     pub stake_account: Account<'info, GmootStakeAccount>,
@@ -363,27 +367,30 @@ pub struct StakeGmoot<'info> {
     /// The Mint of the rewarded token
     #[account(
         mut,
-        address = rewarder.reward_mint,
+        address = rewarder.reward_mint @ StakingError::InvalidRewardMint,
     )]
     pub reward_mint: Box<Account<'info, Mint>>,
 
     /// The token account from the owner
     #[account(
         mut,
-        has_one = owner,
-        constraint = reward_token_account.mint == rewarder.reward_mint,
+        has_one = owner @ StakingError::InvalidOwnerForRewardToken,
+        constraint = reward_token_account.mint == rewarder.reward_mint @ StakingError::InvalidRewardTokenAccount,
     )]
     pub reward_token_account: Account<'info, TokenAccount>,
 
     /// The Mint of the NFT
+    #[account(
+        constraint = nft_mint.supply == 1 @ StakingError::InvalidNFTMintSupply,
+    )]
     pub nft_mint: Box<Account<'info, Mint>>,
 
     /// The token account from the owner
     #[account(
         mut,
-        has_one = owner,
-        constraint = nft_token_account.mint == nft_mint.key(),
-        constraint = nft_token_account.amount == 1,
+        has_one = owner @ StakingError::InvalidNFTOwner,
+        constraint = nft_token_account.mint == nft_mint.key() @ StakingError::InvalidNFTAccountMint,
+        constraint = nft_token_account.amount == 1 @ StakingError::NFTAccountEmpty,
     )]
     pub nft_token_account: Account<'info, TokenAccount>,
 
@@ -400,7 +407,7 @@ pub struct StakeGmoot<'info> {
     /// The account to hold the NFT while staked
     #[account(
         mut,
-        address = get_associated_token_address(&stake_account.key(), &nft_mint.key())
+        address = get_associated_token_address(&stake_account.key(), &nft_mint.key()) @ StakingError::InvalidNFTVaultAddress
     )]
     pub nft_vault: Account<'info, TokenAccount>,
 
@@ -430,8 +437,9 @@ pub struct UnstakeGmoot<'info> {
     /// The stake account for the owner
     #[account(
         mut,
-        has_one = rewarder,
-        seeds = [GMOOT_PREFIX, ACCOUNT_PREFIX, &owner.key.to_bytes()],
+        has_one = rewarder @ StakingError::InvalidRewarder,
+        has_one = owner @ StakingError::InvalidOwnerForStakeAccount,
+        seeds = [GMOOT_PREFIX, ACCOUNT_PREFIX, &rewarder.key().to_bytes(), &owner.key().to_bytes()],
         bump = stake_account.bump,
     )]
     pub stake_account: Account<'info, GmootStakeAccount>,
@@ -439,27 +447,29 @@ pub struct UnstakeGmoot<'info> {
     /// The Mint of the rewarded token
     #[account(
         mut,
-        address = rewarder.reward_mint,
+        address = rewarder.reward_mint @ StakingError::InvalidRewardMint,
     )]
     pub reward_mint: Box<Account<'info, Mint>>,
 
     /// The token account from the owner
     #[account(
         mut,
-        has_one = owner,
-        constraint = reward_token_account.mint == rewarder.reward_mint,
+        has_one = owner @ StakingError::InvalidOwnerForRewardToken,
+        constraint = reward_token_account.mint == rewarder.reward_mint @ StakingError::InvalidRewardTokenAccount,
     )]
     pub reward_token_account: Account<'info, TokenAccount>,
 
     /// The Mint of the NFT
-    #[account()]
+    #[account(
+        constraint = nft_mint.supply == 1 @ StakingError::InvalidNFTMintSupply,
+    )]
     pub nft_mint: Box<Account<'info, Mint>>,
 
     /// The token account from the owner
     #[account(
         mut,
-        has_one = owner,
-        constraint = nft_token_account.mint == nft_mint.key(),
+        has_one = owner @ StakingError::InvalidNFTOwner,
+        constraint = nft_token_account.mint == nft_mint.key() @ StakingError::InvalidNFTAccountMint,
         address = get_associated_token_address(&owner.key(), &nft_mint.key()),
     )]
     pub nft_token_account: Account<'info, TokenAccount>,
@@ -467,7 +477,8 @@ pub struct UnstakeGmoot<'info> {
     /// The account to holding the NFT while staked
     #[account(
         mut,
-        address = get_associated_token_address(&stake_account.key(), &nft_mint.key()),
+        address = get_associated_token_address(&stake_account.key(), &nft_mint.key()) @ StakingError::InvalidNFTVaultAddress,
+        constraint = nft_vault.amount == 1 @ StakingError::NFTVaultEmpty,
     )]
     pub nft_vault: Account<'info, TokenAccount>,
 
@@ -488,8 +499,9 @@ pub struct Claim<'info> {
     /// The stake account for the owner
     #[account(
         mut,
-        has_one = rewarder,
-        seeds = [GMOOT_PREFIX, ACCOUNT_PREFIX, &owner.key.to_bytes()],
+        has_one = rewarder @ StakingError::InvalidRewarder,
+        has_one = owner @ StakingError::InvalidOwnerForStakeAccount,
+        seeds = [GMOOT_PREFIX, ACCOUNT_PREFIX, &rewarder.key().to_bytes(), &owner.key().to_bytes()],
         bump = stake_account.bump,
     )]
     pub stake_account: Account<'info, GmootStakeAccount>,
@@ -497,15 +509,15 @@ pub struct Claim<'info> {
     /// The Mint of the rewarded token
     #[account(
         mut,
-        address = rewarder.reward_mint,
+        address = rewarder.reward_mint @ StakingError::InvalidRewardMint,
     )]
     pub reward_mint: Account<'info, Mint>,
 
     /// The token account for the reward mint for the owner
     #[account(
         mut,
-        has_one = owner,
-        constraint = reward_account.mint == rewarder.reward_mint,
+        has_one = owner @ StakingError::InvalidOwnerForRewardToken,
+        constraint = reward_account.mint == rewarder.reward_mint @ StakingError::InvalidRewardTokenAccount,
     )]
     pub reward_account: Account<'info, TokenAccount>,
 
