@@ -1,23 +1,23 @@
+use std::str::FromStr;
+
 use anchor_lang::prelude::*;
 
 pub mod anchor_metaplex;
 pub mod errors;
 pub mod state;
 
+use anchor_metaplex::MetadataAccount;
 use anchor_spl::associated_token::get_associated_token_address;
 use anchor_spl::token::{self, Mint, MintTo, Token, TokenAccount};
 use errors::*;
+use metaplex_token_metadata::state::Creator;
 use state::*;
 
 const GMOOT_PREFIX: &[u8] = b"gmoot";
 const REWARDER_PREFIX: &[u8] = b"rewarder";
 const ACCOUNT_PREFIX: &[u8] = b"stake_account";
 
-// const GMOOT_UPDATE_AUTHORITY: &str = "2MUpR2xj5FjzL13NiZa852nzwtNTb1FKVf1ERKSvZKd8";
-// const GMOOT_CREATORS: &[&str] = &[
-//     "8mxiQyfXpWdohutWgq652XQ5LT4AaX4Lf5c4gZsdNLfd",
-//     "2MUpR2xj5FjzL13NiZa852nzwtNTb1FKVf1ERKSvZKd8",
-// ];
+const GMOOT_UPDATE_AUTHORITY: &str = "2MUpR2xj5FjzL13NiZa852nzwtNTb1FKVf1ERKSvZKd8";
 
 declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");
 
@@ -532,35 +532,48 @@ pub struct Claim<'info> {
     pub clock: Sysvar<'info, Clock>,
 }
 
-// pub fn check_metadata(metadata: &MetadataAccount) -> bool {
-//     if metadata.update_authority.to_string() != String::from(GMOOT_UPDATE_AUTHORITY) {
-//         return false;
-//     }
+pub fn check_metadata(metadata: &MetadataAccount) -> bool {
+    if metadata.update_authority.to_string() != String::from(GMOOT_UPDATE_AUTHORITY) {
+        return false;
+    }
 
-//     if !metadata.data.name.starts_with("gmoot bag") {
-//         return false;
-//     }
+    if !metadata.data.name.starts_with("gmoot bag") {
+        return false;
+    }
 
-//     if metadata.data.seller_fee_basis_points != 100 {
-//         return false;
-//     }
+    if metadata.data.seller_fee_basis_points != 100 {
+        return false;
+    }
 
-//     if let Some(creators) = &metadata.data.creators {
-//         if creators.len() != 2 {
-//             return false;
-//         }
+    let gmoot_creators: &[Creator] = &[
+        Creator {
+            address: Pubkey::from_str("8mxiQyfXpWdohutWgq652XQ5LT4AaX4Lf5c4gZsdNLfd").unwrap(),
+            verified: true,
+            share: 0,
+        },
+        Creator {
+            address: Pubkey::from_str("2MUpR2xj5FjzL13NiZa852nzwtNTb1FKVf1ERKSvZKd8").unwrap(),
+            verified: false,
+            share: 100,
+        },
+    ];
 
-//         for creator in creators.iter() {
-//             if !GMOOT_CREATORS.contains(&creator.address.to_string().as_str()) {
-//                 return false;
-//             }
-//         }
-//     } else {
-//         return false;
-//     }
+    if let Some(creators) = &metadata.data.creators {
+        if creators.len() != 2 {
+            return false;
+        }
 
-//     true
-// }
+        for creator in creators.iter() {
+            if !gmoot_creators.contains(creator) {
+                return false;
+            }
+        }
+    } else {
+        return false;
+    }
+
+    true
+}
 
 #[cfg(test)]
 mod tests {
