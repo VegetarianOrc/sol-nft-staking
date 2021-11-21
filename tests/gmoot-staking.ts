@@ -58,8 +58,8 @@ describe('gmoot-staking', () => {
         payer.publicKey
       ))
 
-      let txId = await provider.connection.sendTransaction(tx, [payer]);
-      await provider.connection.confirmTransaction(txId, 'confirmed');
+      let txId = await connection.sendTransaction(tx, [payer]);
+      await connection.confirmTransaction(txId, 'confirmed');
       return tokenAccountAddress;
   };
 
