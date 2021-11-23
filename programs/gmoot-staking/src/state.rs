@@ -1,6 +1,7 @@
 use std::mem::size_of;
 
 use anchor_lang::prelude::*;
+use metaplex_token_metadata::state::Creator;
 
 pub trait Len {
     const LEN: usize;
@@ -45,9 +46,17 @@ impl GmootStakeRewarder {
 
 #[derive(Debug, AnchorDeserialize, AnchorSerialize, Default, Clone)]
 pub struct CreatorStruct {
-    creator: Pubkey,
+    address: Pubkey,
     verified: bool,
     share: u8,
+}
+
+impl PartialEq<Creator> for &CreatorStruct {
+    fn eq(&self, other: &Creator) -> bool {
+        self.address == other.address
+            && self.verified == other.verified
+            && self.share == other.share
+    }
 }
 
 #[account]

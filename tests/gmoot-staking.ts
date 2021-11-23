@@ -112,7 +112,7 @@ describe('gmoot-staking', () => {
     it('initializes a rewarder', async () => {
 
       const creators = [
-        { creator: creator.publicKey, verified: true, share: 100 }
+        { address: creator.publicKey, verified: true, share: 100 }
       ];
 
       await gmootStakingProgram.rpc.initializeRewarder(

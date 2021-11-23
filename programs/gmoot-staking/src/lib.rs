@@ -1,5 +1,3 @@
-use std::str::FromStr;
-
 use anchor_lang::prelude::*;
 
 pub mod anchor_metaplex;
@@ -10,13 +8,10 @@ use anchor_metaplex::MetadataAccount;
 use anchor_spl::associated_token::get_associated_token_address;
 use anchor_spl::token::{self, Mint, MintTo, Token, TokenAccount};
 use errors::*;
-use metaplex_token_metadata::state::Creator;
 use state::*;
 
 const REWARDER_PREFIX: &[u8] = b"rewarder";
 const ACCOUNT_PREFIX: &[u8] = b"stake_account";
-
-const GMOOT_UPDATE_AUTHORITY: &str = "2MUpR2xj5FjzL13NiZa852nzwtNTb1FKVf1ERKSvZKd8";
 
 declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");
 
@@ -539,35 +534,26 @@ pub struct Claim<'info> {
     pub clock: Sysvar<'info, Clock>,
 }
 
-pub fn check_metadata(metadata: &MetadataAccount) -> bool {
-    if metadata.update_authority.to_string() != String::from(GMOOT_UPDATE_AUTHORITY) {
+pub fn check_metadata(metadata: &MetadataAccount, rewarder: &GmootStakeRewarder) -> bool {
+    if metadata.update_authority != rewarder.allowed_update_authority {
         return false;
     }
 
-    if !metadata.data.name.starts_with("gmoot bag") {
+    if !metadata.data.name.starts_with(&rewarder.collection) {
         return false;
     }
-
-    let gmoot_creators: &[Creator] = &[
-        Creator {
-            address: Pubkey::from_str("8mxiQyfXpWdohutWgq652XQ5LT4AaX4Lf5c4gZsdNLfd").unwrap(),
-            verified: true,
-            share: 0,
-        },
-        Creator {
-            address: Pubkey::from_str("2MUpR2xj5FjzL13NiZa852nzwtNTb1FKVf1ERKSvZKd8").unwrap(),
-            verified: false,
-            share: 100,
-        },
-    ];
 
     if let Some(creators) = &metadata.data.creators {
-        if creators.len() != 2 {
+        if creators.len() != rewarder.creators.len() {
             return false;
         }
 
         for creator in creators.iter() {
-            if !gmoot_creators.contains(creator) {
+            let found_match = rewarder
+                .creators
+                .iter()
+                .find(|known_creator| known_creator == creator);
+            if found_match.is_none() {
                 return false;
             }
         }
