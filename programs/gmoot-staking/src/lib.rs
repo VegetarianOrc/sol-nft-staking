@@ -154,6 +154,7 @@ pub mod gmoot_staking {
 
         let stake_account_seeds = &[
             rewarder.collection.as_bytes(),
+            &id().to_bytes(),
             ACCOUNT_PREFIX,
             &rewarder.key().to_bytes(),
             &owner.key().to_bytes(),
@@ -251,6 +252,7 @@ pub fn transfer_reward<'info>(
 ) -> ProgramResult {
     let mint_authority_seeds = &[
         rewarder.collection.as_bytes(),
+        &id().to_bytes(),
         REWARDER_PREFIX,
         &rewarder.key().to_bytes(),
         &[rewarder.reward_authority_bump],
@@ -277,7 +279,7 @@ pub struct InitializeRewarder<'info> {
         init,
         space = GmootStakeRewarder::calculate_len(creators.len(), &collection),
         payer = authority,
-        seeds = [&collection.as_bytes(), REWARDER_PREFIX],
+        seeds = [collection.as_bytes(), &id().to_bytes(), REWARDER_PREFIX],
         bump = _rewarder_bump,
     )]
     pub rewarder: Account<'info, GmootStakeRewarder>,
@@ -288,7 +290,7 @@ pub struct InitializeRewarder<'info> {
 
     /// PDA used for minting rewards
     #[account(
-        seeds = [collection.as_bytes(), REWARDER_PREFIX, &rewarder.key().to_bytes()],
+        seeds = [collection.as_bytes(), &id().to_bytes(), REWARDER_PREFIX, &rewarder.key().to_bytes()],
         bump = reward_authority_bump,
     )]
     pub reward_authority: AccountInfo<'info>,
@@ -329,7 +331,7 @@ pub struct InitializeStakeAccount<'info> {
         init,
         payer = owner,
         space = GmootStakeAccount::LEN,
-        seeds = [rewarder.collection.as_bytes(), ACCOUNT_PREFIX, &rewarder.key().to_bytes(), &owner.key().to_bytes()],
+        seeds = [rewarder.collection.as_bytes(), &id().to_bytes(), ACCOUNT_PREFIX, &rewarder.key().to_bytes(), &owner.key().to_bytes()],
         bump = bump,
     )]
     pub stake_account: Account<'info, GmootStakeAccount>,
@@ -354,7 +356,7 @@ pub struct StakeGmoot<'info> {
 
     /// PDA that has the authority to mint reward tokens
     #[account(
-        seeds = [rewarder.collection.as_bytes(), REWARDER_PREFIX, &rewarder.key().to_bytes()],
+        seeds = [rewarder.collection.as_bytes(), &id().to_bytes(), REWARDER_PREFIX, &rewarder.key().to_bytes()],
         bump = rewarder.reward_authority_bump,
     )]
     pub reward_authority: AccountInfo<'info>,
@@ -364,7 +366,7 @@ pub struct StakeGmoot<'info> {
         mut,
         has_one = rewarder @ StakingError::InvalidRewarder,
         has_one = owner @ StakingError::InvalidOwnerForStakeAccount,
-        seeds = [rewarder.collection.as_bytes(), ACCOUNT_PREFIX, &rewarder.key().to_bytes(), &owner.key().to_bytes()],
+        seeds = [rewarder.collection.as_bytes(), &id().to_bytes(), ACCOUNT_PREFIX, &rewarder.key().to_bytes(), &owner.key().to_bytes()],
         bump = stake_account.bump,
     )]
     pub stake_account: Account<'info, GmootStakeAccount>,
@@ -434,7 +436,7 @@ pub struct UnstakeGmoot<'info> {
 
     /// PDA that has the authority to mint reward tokens
     #[account(
-        seeds = [rewarder.collection.as_bytes(), REWARDER_PREFIX, &rewarder.key().to_bytes()],
+        seeds = [rewarder.collection.as_bytes(), &id().to_bytes(), REWARDER_PREFIX, &rewarder.key().to_bytes()],
         bump = rewarder.reward_authority_bump,
     )]
     pub reward_authority: AccountInfo<'info>,
@@ -444,7 +446,7 @@ pub struct UnstakeGmoot<'info> {
         mut,
         has_one = rewarder @ StakingError::InvalidRewarder,
         has_one = owner @ StakingError::InvalidOwnerForStakeAccount,
-        seeds = [rewarder.collection.as_bytes(), ACCOUNT_PREFIX, &rewarder.key().to_bytes(), &owner.key().to_bytes()],
+        seeds = [rewarder.collection.as_bytes(), &id().to_bytes(), ACCOUNT_PREFIX, &rewarder.key().to_bytes(), &owner.key().to_bytes()],
         bump = stake_account.bump,
     )]
     pub stake_account: Account<'info, GmootStakeAccount>,
@@ -506,7 +508,7 @@ pub struct Claim<'info> {
         mut,
         has_one = rewarder @ StakingError::InvalidRewarder,
         has_one = owner @ StakingError::InvalidOwnerForStakeAccount,
-        seeds = [rewarder.collection.as_bytes(), ACCOUNT_PREFIX, &rewarder.key().to_bytes(), &owner.key().to_bytes()],
+        seeds = [rewarder.collection.as_bytes(), &id().to_bytes(), ACCOUNT_PREFIX, &rewarder.key().to_bytes(), &owner.key().to_bytes()],
         bump = stake_account.bump,
     )]
     pub stake_account: Account<'info, GmootStakeAccount>,
@@ -528,7 +530,7 @@ pub struct Claim<'info> {
 
     /// PDA that has the authority to mint reward tokens
     #[account(
-        seeds = [rewarder.collection.as_bytes(), REWARDER_PREFIX, &rewarder.key().to_bytes()],
+        seeds = [rewarder.collection.as_bytes(), &id().to_bytes(), REWARDER_PREFIX, &rewarder.key().to_bytes()],
         bump = rewarder.reward_authority_bump,
     )]
     pub reward_authority: AccountInfo<'info>,
