@@ -67,9 +67,10 @@ describe('gmoot-staking', () => {
   describe('end to end test', async () => {
     const owner = anchor.web3.Keypair.generate();
     const creator = anchor.web3.Keypair.generate();
-    const [rewarder, rewarderBump] = await anchor.web3.PublicKey.findProgramAddress([Buffer.from("gmoot"), Buffer.from("rewarder")], gmootStakingProgram.programId);
-    const [rewardAuthority, rewardAuthorityBump] = await anchor.web3.PublicKey.findProgramAddress([Buffer.from("gmoot"), Buffer.from("rewarder"), rewarder.toBuffer()], gmootStakingProgram.programId);
-    const [stakeAccount, stakeAccountBump] = await anchor.web3.PublicKey.findProgramAddress([Buffer.from("gmoot"), Buffer.from("stake_account"), rewarder.toBuffer(), owner.publicKey.toBuffer()], gmootStakingProgram.programId);
+    const collectionName = "gmoot";
+    const [rewarder, rewarderBump] = await anchor.web3.PublicKey.findProgramAddress([Buffer.from(collectionName), Buffer.from("rewarder")], gmootStakingProgram.programId);
+    const [rewardAuthority, rewardAuthorityBump] = await anchor.web3.PublicKey.findProgramAddress([Buffer.from(collectionName), Buffer.from("rewarder"), rewarder.toBuffer()], gmootStakingProgram.programId);
+    const [stakeAccount, stakeAccountBump] = await anchor.web3.PublicKey.findProgramAddress([Buffer.from(collectionName), Buffer.from("stake_account"), rewarder.toBuffer(), owner.publicKey.toBuffer()], gmootStakingProgram.programId);
     const rewardRate = 10;
     let rewardMint = null;
     let rewardTokenAccount = null;
@@ -118,7 +119,7 @@ describe('gmoot-staking', () => {
         rewarderBump,
         rewardAuthorityBump,
         new anchor.BN(rewardRate),
-        Buffer.from("gmoot"),
+        Buffer.from(collectionName),
         creators,
         creator.publicKey,
         {
