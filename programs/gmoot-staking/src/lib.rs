@@ -31,6 +31,9 @@ pub mod gmoot_staking {
         _rewarder_bump: u8,
         reward_authority_bump: u8,
         reward_rate: u64,
+        collection_prefix: String,
+        creators: Vec<CreatorStruct>,
+        nft_update_authority: Pubkey,
     ) -> ProgramResult {
         let rewarder = &mut ctx.accounts.rewarder;
 
@@ -38,6 +41,9 @@ pub mod gmoot_staking {
         rewarder.reward_mint = ctx.accounts.reward_mint.key();
         rewarder.reward_authority_bump = reward_authority_bump;
         rewarder.reward_rate = reward_rate;
+        rewarder.allowed_update_authority = nft_update_authority;
+        rewarder.creators = creators;
+        rewarder.prefix = collection_prefix;
 
         Ok(())
     }
@@ -265,15 +271,15 @@ pub fn transfer_reward<'info>(
 }
 
 #[derive(Accounts)]
-#[instruction(rewarder_bump: u8, reward_authority_bump: u8)]
+#[instruction(_rewarder_bump: u8, reward_authority_bump: u8, reward_rate: u64, collection_prefix: String, creators: Vec<CreatorStruct>)]
 pub struct InitializeRewarder<'info> {
     /// The new rewarder account to create
     #[account(
         init,
-        seeds = [GMOOT_PREFIX, REWARDER_PREFIX],
-        bump = rewarder_bump,
-        space = GmootStakeRewarder::LEN,
+        space = GmootStakeRewarder::calculate_len(creators.len(), &collection_prefix),
         payer = authority,
+        seeds = [GMOOT_PREFIX, REWARDER_PREFIX],
+        bump = _rewarder_bump,
     )]
     pub rewarder: Account<'info, GmootStakeRewarder>,
 
@@ -345,7 +351,7 @@ pub struct StakeGmoot<'info> {
 
     /// The rewarder account for the collection
     #[account()]
-    pub rewarder: Account<'info, GmootStakeRewarder>,
+    pub rewarder: Box<Account<'info, GmootStakeRewarder>>,
 
     /// PDA that has the authority to mint reward tokens
     #[account(
@@ -538,10 +544,6 @@ pub fn check_metadata(metadata: &MetadataAccount) -> bool {
     }
 
     if !metadata.data.name.starts_with("gmoot bag") {
-        return false;
-    }
-
-    if metadata.data.seller_fee_basis_points != 100 {
         return false;
     }
 

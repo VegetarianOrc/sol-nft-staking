@@ -1,5 +1,6 @@
 import * as anchor from '@project-serum/anchor';
 import { Program } from '@project-serum/anchor';
+import * as borsh from 'borsh';
 import { GmootStaking } from '../target/types/gmoot_staking';
 import * as splToken from '@solana/spl-token';
 import { expect } from 'chai';
@@ -65,6 +66,7 @@ describe('gmoot-staking', () => {
 
   describe('end to end test', async () => {
     const owner = anchor.web3.Keypair.generate();
+    const creator = anchor.web3.Keypair.generate();
     const [rewarder, rewarderBump] = await anchor.web3.PublicKey.findProgramAddress([Buffer.from("gmoot"), Buffer.from("rewarder")], gmootStakingProgram.programId);
     const [rewardAuthority, rewardAuthorityBump] = await anchor.web3.PublicKey.findProgramAddress([Buffer.from("gmoot"), Buffer.from("rewarder"), rewarder.toBuffer()], gmootStakingProgram.programId);
     const [stakeAccount, stakeAccountBump] = await anchor.web3.PublicKey.findProgramAddress([Buffer.from("gmoot"), Buffer.from("stake_account"), rewarder.toBuffer(), owner.publicKey.toBuffer()], gmootStakingProgram.programId);
@@ -105,8 +107,21 @@ describe('gmoot-staking', () => {
       
     });
 
+
     it('initializes a rewarder', async () => {
-      await gmootStakingProgram.rpc.initializeRewarder(rewarderBump, rewardAuthorityBump, new anchor.BN(rewardRate), {
+
+      const creators = [
+        { creator: creator.publicKey, verified: true, share: 100 }
+      ];
+
+      await gmootStakingProgram.rpc.initializeRewarder(
+        rewarderBump,
+        rewardAuthorityBump,
+        new anchor.BN(rewardRate),
+        Buffer.from("gmoot"),
+        creators,
+        creator.publicKey,
+        {
         accounts: {
           rewarder: rewarder,
           authority: owner.publicKey,
