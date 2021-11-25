@@ -38,6 +38,7 @@ pub mod gmoot_staking {
         rewarder.allowed_update_authority = nft_update_authority;
         rewarder.creators = creators;
         rewarder.collection = collection;
+        rewarder.total_staked = 0;
 
         Ok(())
     }
@@ -67,7 +68,7 @@ pub mod gmoot_staking {
 
     pub fn stake_gmoot(ctx: Context<StakeGmoot>) -> ProgramResult {
         let owner = &ctx.accounts.owner;
-        let rewarder = &ctx.accounts.rewarder;
+        let rewarder = &mut ctx.accounts.rewarder;
         let stake_account = &mut ctx.accounts.stake_account;
         let reward_mint = &ctx.accounts.reward_mint;
         let reward_autority = &ctx.accounts.reward_authority;
@@ -99,6 +100,7 @@ pub mod gmoot_staking {
 
         //increase the number of staked nfts by 1
         stake_account.num_staked += 1;
+        rewarder.total_staked += 1;
 
         //transfer nft to vault
         let tx_accounts = Transfer {
@@ -114,7 +116,7 @@ pub mod gmoot_staking {
 
     pub fn unstake_gmoot(ctx: Context<UnstakeGmoot>) -> ProgramResult {
         let owner = &ctx.accounts.owner;
-        let rewarder = &ctx.accounts.rewarder;
+        let rewarder = &mut ctx.accounts.rewarder;
         let stake_account = &mut ctx.accounts.stake_account;
         let reward_mint = &ctx.accounts.reward_mint;
         let reward_autority = &ctx.accounts.reward_authority;
@@ -146,6 +148,7 @@ pub mod gmoot_staking {
 
         //descrease the number of staked nfts by 1
         stake_account.num_staked = stake_account.num_staked.checked_sub(1).unwrap_or(0);
+        rewarder.total_staked = rewarder.total_staked.checked_sub(1).unwrap_or(0);
 
         let stake_account_seeds = &[
             rewarder.collection.as_bytes(),
@@ -346,7 +349,7 @@ pub struct StakeGmoot<'info> {
     pub owner: AccountInfo<'info>,
 
     /// The rewarder account for the collection
-    #[account()]
+    #[account(mut)]
     pub rewarder: Box<Account<'info, GmootStakeRewarder>>,
 
     /// PDA that has the authority to mint reward tokens
@@ -426,7 +429,7 @@ pub struct UnstakeGmoot<'info> {
     pub owner: AccountInfo<'info>,
 
     /// The rewarder account for the collection
-    #[account()]
+    #[account(mut)]
     pub rewarder: Account<'info, GmootStakeRewarder>,
 
     /// PDA that has the authority to mint reward tokens

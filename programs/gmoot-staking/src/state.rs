@@ -27,6 +27,8 @@ pub struct GmootStakeRewarder {
     pub creators: Vec<CreatorStruct>,
     /// the collection name required for the NFTs being staked
     pub collection: String,
+    /// The total number of NFTs staked with this rewarder.
+    pub total_staked: u32,
 }
 
 impl GmootStakeRewarder {
