@@ -122,6 +122,7 @@ describe('gmoot-staking', () => {
         Buffer.from(collectionName),
         creators,
         creator.publicKey,
+        false,
         {
         accounts: {
           rewarder: rewarder,

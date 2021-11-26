@@ -40,4 +40,25 @@ pub enum StakingError {
 
     #[msg("The provided NFT vault token account does not have the token")]
     NFTVaultEmpty,
+
+    #[msg("There was no Metaplex Metadata account supplied")]
+    MetadataAccountNotFound,
+
+    #[msg("The Metaplex Metadata account is not owned by the Metaplex Token Metadata program")]
+    MetadataAccountNotOwnedByCorrectProgram,
+
+    #[msg("The Metaplex Metadata account failed to deserialze")]
+    InvalidMetadataAccountData,
+
+    #[msg("The Metaplex Metadata account did not have the expected PDA seeds")]
+    InvalidMetadataAccountAddress,
+
+    #[msg("The Metaplex Metadata account did not have the expected update authority")]
+    InvalidMetadataUpdateAuthority,
+
+    #[msg("The Metaplex Metadata account did not have a name beginning with the collection")]
+    InvalidMetadataCollectionPrefix,
+
+    #[msg("The Metaplex Metadata account did not have the expected creators")]
+    InvalidMetadataCreators,
 }

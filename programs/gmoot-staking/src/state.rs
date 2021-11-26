@@ -27,6 +27,9 @@ pub struct GmootStakeRewarder {
     pub creators: Vec<CreatorStruct>,
     /// the collection name required for the NFTs being staked
     pub collection: String,
+    /// flag to verify metadata of NFT against rewarder settings
+    /// useful to have set to false during testing
+    pub enforce_metadata: bool,
     /// The total number of NFTs staked with this rewarder.
     pub total_staked: u32,
 }
@@ -36,6 +39,8 @@ impl GmootStakeRewarder {
         let mut size = size_of::<Pubkey>() * 3; //stored pubkeys
         size += 1; // authority bump
         size += 8; // reward rate
+        size += 4; //total staked
+        size += 1; //enforced metadata
 
         let creator_size = size_of::<CreatorStruct>() * num_creators;
         size += creator_size;

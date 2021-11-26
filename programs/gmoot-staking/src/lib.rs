@@ -13,7 +13,7 @@ use state::*;
 const REWARDER_PREFIX: &[u8] = b"rewarder";
 const ACCOUNT_PREFIX: &[u8] = b"stake_account";
 
-declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");
+declare_id!("D42AsUF2UbUcyBtK2Jvbym2ALfksvgeScNNtMg7KrSfj");
 
 #[program]
 pub mod gmoot_staking {
@@ -28,6 +28,7 @@ pub mod gmoot_staking {
         collection: String,
         creators: Vec<CreatorStruct>,
         nft_update_authority: Pubkey,
+        enforce_metadata: bool,
     ) -> ProgramResult {
         let rewarder = &mut ctx.accounts.rewarder;
 
@@ -39,6 +40,7 @@ pub mod gmoot_staking {
         rewarder.creators = creators;
         rewarder.collection = collection;
         rewarder.total_staked = 0;
+        rewarder.enforce_metadata = enforce_metadata;
 
         Ok(())
     }
@@ -73,14 +75,20 @@ pub mod gmoot_staking {
         let reward_mint = &ctx.accounts.reward_mint;
         let reward_autority = &ctx.accounts.reward_authority;
         let reward_token_account = &ctx.accounts.reward_token_account;
+        let nft_mint = &ctx.accounts.nft_mint;
         let nft_token_account = &ctx.accounts.nft_token_account;
         let nft_vault = &ctx.accounts.nft_vault;
 
         let token_program = &ctx.accounts.token_program;
         let clock = &ctx.accounts.clock;
 
-        // Calculate and claim any pending rewards
+        if rewarder.enforce_metadata {
+            let remaining = ctx.remaining_accounts;
+            let metadata = get_metadata_account(remaining)?;
+            check_metadata(&metadata, &nft_mint.key(), rewarder)?;
+        }
 
+        // Calculate and claim any pending rewards
         let to_reward = calculate_reward(
             rewarder.reward_rate,
             stake_account.num_staked,
@@ -537,18 +545,35 @@ pub struct Claim<'info> {
     pub clock: Sysvar<'info, Clock>,
 }
 
-pub fn check_metadata(metadata: &MetadataAccount, rewarder: &GmootStakeRewarder) -> bool {
+pub fn check_metadata<'a, 'b, 'c, 'info>(
+    metadata: &'a Account<'info, MetadataAccount>,
+    nft_mint_key: &'b Pubkey,
+    rewarder: &'c GmootStakeRewarder,
+) -> std::result::Result<(), ProgramError> {
+    let (expected_address, _) = Pubkey::find_program_address(
+        &[
+            anchor_metaplex::PDAPrefix.as_bytes(),
+            &anchor_metaplex::ID.to_bytes(),
+            &nft_mint_key.to_bytes(),
+        ],
+        &anchor_metaplex::ID,
+    );
+
+    if metadata.key() != expected_address {
+        return Err(StakingError::InvalidMetadataAccountAddress.into());
+    }
+
     if metadata.update_authority != rewarder.allowed_update_authority {
-        return false;
+        return Err(StakingError::InvalidMetadataUpdateAuthority.into());
     }
 
     if !metadata.data.name.starts_with(&rewarder.collection) {
-        return false;
+        return Err(StakingError::InvalidMetadataCollectionPrefix.into());
     }
 
     if let Some(creators) = &metadata.data.creators {
         if creators.len() != rewarder.creators.len() {
-            return false;
+            return Err(StakingError::InvalidMetadataCreators.into());
         }
 
         for creator in creators.iter() {
@@ -557,14 +582,29 @@ pub fn check_metadata(metadata: &MetadataAccount, rewarder: &GmootStakeRewarder)
                 .iter()
                 .find(|known_creator| known_creator == creator);
             if found_match.is_none() {
-                return false;
+                return Err(StakingError::InvalidMetadataCreators.into());
             }
         }
     } else {
-        return false;
+        return Err(StakingError::InvalidMetadataCreators.into());
     }
 
-    true
+    Ok(())
+}
+
+pub fn get_metadata_account<'a, 'b>(
+    accounts: &'a [AccountInfo<'b>],
+) -> std::result::Result<Account<'b, MetadataAccount>, StakingError> {
+    let accounts_iter = &mut accounts.iter();
+    let metadata_info =
+        next_account_info(accounts_iter).or(Err(StakingError::MetadataAccountNotFound))?;
+
+    if *metadata_info.owner != anchor_metaplex::ID {
+        return Err(StakingError::MetadataAccountNotOwnedByCorrectProgram);
+    }
+
+    Ok(Account::try_from_unchecked(&metadata_info)
+        .or(Err(StakingError::InvalidMetadataAccountData))?)
 }
 
 #[cfg(test)]
