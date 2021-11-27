@@ -96,3 +96,13 @@ The Stake Account address is calculated using the following seeds:
 ```
 [collectionName, StakingProgramID, "stake_account", rewarderPubkey, ownerPubkey]
 ```
+
+#### Stake Account Layout
+
+| Name         | Type   | Description                                                                                                              |
+| ------------ | ------ | ------------------------------------------------------------------------------------------------------------------------ |
+| owner        | Pubkey | The owner of the stake account. Required signer for updating the stake account in anyway                                 |
+| rewarder     | Pubkey | The Rewarder that this stake account is associated with                                                                  |
+| num_staked   | u16    | The number of nfts the owner has staked with this stake account                                                          |
+| bump         | u8     | The PDA bump of this stake account that is used to sign transaction when unstaking NFTs. Stored to save on-chain compute |
+| last_claimed | i64    | The unix timestamp of the last time that the owner claimed rewards for this stake account                                |
