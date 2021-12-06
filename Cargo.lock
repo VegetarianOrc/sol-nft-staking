@@ -510,6 +510,7 @@ dependencies = [
  "anchor-lang",
  "anchor-spl",
  "metaplex-token-metadata",
+ "spl-token",
 ]
 
 [[package]]

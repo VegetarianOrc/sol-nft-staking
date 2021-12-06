@@ -6,8 +6,9 @@ pub mod state;
 
 use anchor_metaplex::MetadataAccount;
 use anchor_spl::associated_token::get_associated_token_address;
-use anchor_spl::token::{self, Mint, MintTo, Token, TokenAccount};
+use anchor_spl::token::{self, Mint, MintTo, SetAuthority, Token, TokenAccount};
 use errors::*;
+use spl_token::instruction::AuthorityType;
 use state::*;
 
 const REWARDER_PREFIX: &[u8] = b"rewarder";
@@ -17,7 +18,6 @@ declare_id!("D42AsUF2UbUcyBtK2Jvbym2ALfksvgeScNNtMg7KrSfj");
 
 #[program]
 pub mod gmoot_staking {
-    use anchor_spl::token::{self, CloseAccount, Transfer};
 
     use super::*;
     pub fn initialize_rewarder(
@@ -77,7 +77,7 @@ pub mod gmoot_staking {
         let reward_token_account = &ctx.accounts.reward_token_account;
         let nft_mint = &ctx.accounts.nft_mint;
         let nft_token_account = &ctx.accounts.nft_token_account;
-        let nft_vault = &ctx.accounts.nft_vault;
+        // let nft_vault = &ctx.accounts.nft_vault;
 
         let token_program = &ctx.accounts.token_program;
         let clock = &ctx.accounts.clock;
@@ -110,14 +110,17 @@ pub mod gmoot_staking {
         stake_account.num_staked += 1;
         rewarder.total_staked += 1;
 
-        //transfer nft to vault
-        let tx_accounts = Transfer {
-            from: nft_token_account.to_account_info(),
-            to: nft_vault.to_account_info(),
-            authority: owner.to_account_info(),
+        //transfer nft ownership to vault
+        let authority_accounts = SetAuthority {
+            current_authority: owner.to_account_info(),
+            account_or_mint: nft_token_account.to_account_info(),
         };
-        let tx_ctx = CpiContext::new(token_program.to_account_info(), tx_accounts);
-        token::transfer(tx_ctx, 1)?;
+        let authority_ctx = CpiContext::new(token_program.to_account_info(), authority_accounts);
+        token::set_authority(
+            authority_ctx,
+            AuthorityType::AccountOwner,
+            Some(stake_account.key()),
+        )?;
 
         Ok(())
     }
@@ -130,7 +133,7 @@ pub mod gmoot_staking {
         let reward_autority = &ctx.accounts.reward_authority;
         let reward_token_account = &ctx.accounts.reward_token_account;
         let nft_token_account = &ctx.accounts.nft_token_account;
-        let nft_vault = &ctx.accounts.nft_vault;
+        // let nft_vault = &ctx.accounts.nft_vault;
 
         let token_program = &ctx.accounts.token_program;
         let clock = &ctx.accounts.clock;
@@ -170,30 +173,20 @@ pub mod gmoot_staking {
         let stake_account_signer = &[&stake_account_seeds[..]];
 
         //transfer nft to vault
-        let tx_accounts = Transfer {
-            from: nft_vault.to_account_info(),
-            to: nft_token_account.to_account_info(),
-            authority: stake_account.to_account_info(),
+        let authority_accounts = SetAuthority {
+            current_authority: stake_account.to_account_info(),
+            account_or_mint: nft_token_account.to_account_info(),
         };
-        let tx_ctx = CpiContext::new_with_signer(
+        let authority_ctx = CpiContext::new_with_signer(
             token_program.to_account_info(),
-            tx_accounts,
+            authority_accounts,
             stake_account_signer,
         );
-        token::transfer(tx_ctx, 1)?;
-
-        //close empty nft vault and return rent to owner
-        let close_accounts = CloseAccount {
-            account: nft_vault.to_account_info(),
-            destination: owner.to_account_info(),
-            authority: stake_account.to_account_info(),
-        };
-        let close_ctx = CpiContext::new_with_signer(
-            token_program.to_account_info(),
-            close_accounts,
-            stake_account_signer,
-        );
-        token::close_account(close_ctx)?;
+        token::set_authority(
+            authority_ctx,
+            AuthorityType::AccountOwner,
+            Some(owner.key()),
+        )?;
 
         Ok(())
     }
@@ -418,12 +411,11 @@ pub struct StakeGmoot<'info> {
     //
     //
     /// The account to hold the NFT while staked
-    #[account(
-        mut,
-        address = get_associated_token_address(&stake_account.key(), &nft_mint.key()) @ StakingError::InvalidNFTVaultAddress
-    )]
-    pub nft_vault: Account<'info, TokenAccount>,
-
+    // #[account(
+    //     mut,
+    //     address = get_associated_token_address(&stake_account.key(), &nft_mint.key()) @ StakingError::InvalidNFTVaultAddress
+    // )]
+    // pub nft_vault: Account<'info, TokenAccount>,
     pub token_program: Program<'info, Token>,
     pub system_program: Program<'info, System>,
     pub rent: Sysvar<'info, Rent>,
@@ -481,19 +473,11 @@ pub struct UnstakeGmoot<'info> {
     /// The token account from the owner
     #[account(
         mut,
-        has_one = owner @ StakingError::InvalidNFTOwner,
+        constraint = nft_token_account.owner == stake_account.key() @ StakingError::InvalidStakedNFTOwner,
         constraint = nft_token_account.mint == nft_mint.key() @ StakingError::InvalidNFTAccountMint,
         address = get_associated_token_address(&owner.key(), &nft_mint.key()),
     )]
     pub nft_token_account: Account<'info, TokenAccount>,
-
-    /// The account to holding the NFT while staked
-    #[account(
-        mut,
-        address = get_associated_token_address(&stake_account.key(), &nft_mint.key()) @ StakingError::InvalidNFTVaultAddress,
-        constraint = nft_vault.amount == 1 @ StakingError::NFTVaultEmpty,
-    )]
-    pub nft_vault: Account<'info, TokenAccount>,
 
     pub token_program: Program<'info, Token>,
     pub clock: Sysvar<'info, Clock>,

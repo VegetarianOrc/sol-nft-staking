@@ -18,3 +18,4 @@ default = []
 anchor-lang = "0.18.2"
 anchor-spl = "0.18.2"
 metaplex-token-metadata = {version = "0.0.1", features = ["no-entrypoint"]}
+spl-token = "3.2.0"

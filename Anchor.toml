@@ -8,5 +8,9 @@ url = "https://anchor.projectserum.com"
 cluster = "localnet"
 wallet = "./test-keypair.json"
 
+[test]
+clone = [{address = "metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s"}]
+validator = {url = "mainnet-beta"}
+
 [scripts]
 test = "npx ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts"

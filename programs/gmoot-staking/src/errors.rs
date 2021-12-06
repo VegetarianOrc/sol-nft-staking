@@ -35,11 +35,8 @@ pub enum StakingError {
     #[msg("The provided NFT token account does not have the token")]
     NFTAccountEmpty,
 
-    #[msg("The provided NFT vault token account is not the associated token account for the provided NFT mint and stake account")]
-    InvalidNFTVaultAddress,
-
-    #[msg("The provided NFT vault token account does not have the token")]
-    NFTVaultEmpty,
+    #[msg("The provided NFT token account is not owned by the provided stake account")]
+    InvalidStakedNFTOwner,
 
     #[msg("There was no Metaplex Metadata account supplied")]
     MetadataAccountNotFound,
