@@ -1,11 +1,11 @@
 import * as anchor from "@project-serum/anchor";
 import { Program, web3 } from "@project-serum/anchor";
-import { GmootStaking } from "../target/types/gmoot_staking";
+import { SolNftStaking } from "../target/types/sol_nft_staking";
 import { Command, program as cliProgram } from "commander";
 import * as fs from "fs";
 import * as splToken from "@solana/spl-token";
 
-const GMOOT_STAKING_PROGRAM_ID = new web3.PublicKey(
+const SOL_NFT_STAKING_PROGRAM_ID = new web3.PublicKey(
   "D42AsUF2UbUcyBtK2Jvbym2ALfksvgeScNNtMg7KrSfj"
 );
 
@@ -57,10 +57,10 @@ async function getRewarderAddress(
   return await anchor.web3.PublicKey.findProgramAddress(
     [
       Buffer.from(collectionName),
-      GMOOT_STAKING_PROGRAM_ID.toBuffer(),
+      SOL_NFT_STAKING_PROGRAM_ID.toBuffer(),
       Buffer.from("rewarder"),
     ],
-    GMOOT_STAKING_PROGRAM_ID
+    SOL_NFT_STAKING_PROGRAM_ID
   );
 }
 
@@ -71,11 +71,11 @@ async function getRewarderAuthority(
   return await anchor.web3.PublicKey.findProgramAddress(
     [
       Buffer.from(collectionName),
-      GMOOT_STAKING_PROGRAM_ID.toBuffer(),
+      SOL_NFT_STAKING_PROGRAM_ID.toBuffer(),
       Buffer.from("rewarder"),
       rewarderAddress.toBuffer(),
     ],
-    GMOOT_STAKING_PROGRAM_ID
+    SOL_NFT_STAKING_PROGRAM_ID
   );
 }
 
@@ -130,9 +130,11 @@ rewarderCommand
       new anchor.Provider(connection, null, { commitment: "confirmed" })
     );
 
-    const gmootStakingProgram = await Program.at(GMOOT_STAKING_PROGRAM_ID);
+    const solNftStakingProgram = (await Program.at(
+      SOL_NFT_STAKING_PROGRAM_ID
+    )) as Program<SolNftStaking>;
 
-    const rewarder = await gmootStakingProgram.account.gmootStakeRewarder.fetch(
+    const rewarder = await solNftStakingProgram.account.nftStakeRewarder.fetch(
       key
     );
     printRewarder(key, rewarder);
@@ -172,7 +174,9 @@ rewarderCommand
 
     const parsedCreators = loadCreators(creators);
 
-    const gmootStakingProgram = await Program.at(GMOOT_STAKING_PROGRAM_ID);
+    const solNftStakingProgram = (await Program.at(
+      SOL_NFT_STAKING_PROGRAM_ID
+    )) as Program<SolNftStaking>;
     console.log(`Creating rewarder for '${name}'`);
 
     console.log(`Finding PDAs for rewarder and mint authority`);
@@ -192,7 +196,7 @@ rewarderCommand
     );
     console.log(`Reward mint created: ${rewardMint.publicKey.toBase58()} `);
 
-    const initRewarderTxId = await gmootStakingProgram.rpc.initializeRewarder(
+    const initRewarderTxId = await solNftStakingProgram.rpc.initializeRewarder(
       rewarderBump,
       rewardAuthorityBump,
       new anchor.BN(rewardRate),

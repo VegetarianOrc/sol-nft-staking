@@ -1,7 +1,7 @@
 {
-  "name": "gmoot-staking-cli",
+  "name": "sol-nft-staking-cli",
   "version": "1.0.0",
-  "description": "CLI for interacting with the gmoot-staking Solana program",
+  "description": "CLI for interacting with the sol-nft-staking Solana program",
   "main": "cli.ts",
   "scripts": {
     "start": "ts-node cli.ts",

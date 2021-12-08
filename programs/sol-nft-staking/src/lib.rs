@@ -17,7 +17,7 @@ const ACCOUNT_PREFIX: &[u8] = b"stake_account";
 declare_id!("D42AsUF2UbUcyBtK2Jvbym2ALfksvgeScNNtMg7KrSfj");
 
 #[program]
-pub mod gmoot_staking {
+pub mod sol_nft_staking {
 
     use super::*;
     pub fn initialize_rewarder(
@@ -68,7 +68,7 @@ pub mod gmoot_staking {
         Ok(())
     }
 
-    pub fn stake_gmoot(ctx: Context<StakeGmoot>) -> ProgramResult {
+    pub fn stake_nft(ctx: Context<StakeNft>) -> ProgramResult {
         let owner = &ctx.accounts.owner;
         let rewarder = &mut ctx.accounts.rewarder;
         let stake_account = &mut ctx.accounts.stake_account;
@@ -125,7 +125,7 @@ pub mod gmoot_staking {
         Ok(())
     }
 
-    pub fn unstake_gmoot(ctx: Context<UnstakeGmoot>) -> ProgramResult {
+    pub fn unstake_nft(ctx: Context<UnstakeNft>) -> ProgramResult {
         let owner = &ctx.accounts.owner;
         let rewarder = &mut ctx.accounts.rewarder;
         let stake_account = &mut ctx.accounts.stake_account;
@@ -243,7 +243,7 @@ pub fn calculate_reward(
 
 pub fn transfer_reward<'info>(
     earned_reward: u64,
-    rewarder: &Account<'info, GmootStakeRewarder>,
+    rewarder: &Account<'info, NftStakeRewarder>,
     reward_mint: &Account<'info, Mint>,
     reward_account: &Account<'info, TokenAccount>,
     mint_authority: &AccountInfo<'info>,
@@ -276,12 +276,12 @@ pub struct InitializeRewarder<'info> {
     /// The new rewarder account to create
     #[account(
         init,
-        space = GmootStakeRewarder::calculate_len(creators.len(), &collection),
+        space = NftStakeRewarder::calculate_len(creators.len(), &collection),
         payer = authority,
         seeds = [collection.as_bytes(), &id().to_bytes(), REWARDER_PREFIX],
         bump = _rewarder_bump,
     )]
-    pub rewarder: Account<'info, GmootStakeRewarder>,
+    pub rewarder: Account<'info, NftStakeRewarder>,
 
     /// The owner of the rewarder account
     #[account(mut, signer)]
@@ -311,7 +311,7 @@ pub struct UpdateRewardRate<'info> {
         mut,
         has_one = authority @ StakingError::InvalidRewarderAuthority,
     )]
-    pub rewarder: Account<'info, GmootStakeRewarder>,
+    pub rewarder: Account<'info, NftStakeRewarder>,
 
     /// The owner of the rewarder account
     #[account(signer)]
@@ -329,14 +329,14 @@ pub struct InitializeStakeAccount<'info> {
     #[account(
         init,
         payer = owner,
-        space = GmootStakeAccount::LEN,
+        space = NftStakeAccount::LEN,
         seeds = [rewarder.collection.as_bytes(), &id().to_bytes(), ACCOUNT_PREFIX, &rewarder.key().to_bytes(), &owner.key().to_bytes()],
         bump = bump,
     )]
-    pub stake_account: Account<'info, GmootStakeAccount>,
+    pub stake_account: Account<'info, NftStakeAccount>,
 
     /// The rewarder associated with this stake account
-    pub rewarder: Account<'info, GmootStakeRewarder>,
+    pub rewarder: Account<'info, NftStakeRewarder>,
 
     pub system_program: Program<'info, System>,
     pub rent: Sysvar<'info, Rent>,
@@ -344,14 +344,14 @@ pub struct InitializeStakeAccount<'info> {
 
 #[derive(Accounts)]
 // #[instruction(_vault_bump: u8)]
-pub struct StakeGmoot<'info> {
+pub struct StakeNft<'info> {
     /// The owner of the stake account
     #[account(mut, signer)]
     pub owner: AccountInfo<'info>,
 
     /// The rewarder account for the collection
     #[account(mut)]
-    pub rewarder: Box<Account<'info, GmootStakeRewarder>>,
+    pub rewarder: Box<Account<'info, NftStakeRewarder>>,
 
     /// PDA that has the authority to mint reward tokens
     #[account(
@@ -368,7 +368,7 @@ pub struct StakeGmoot<'info> {
         seeds = [rewarder.collection.as_bytes(), &id().to_bytes(), ACCOUNT_PREFIX, &rewarder.key().to_bytes(), &owner.key().to_bytes()],
         bump = stake_account.bump,
     )]
-    pub stake_account: Account<'info, GmootStakeAccount>,
+    pub stake_account: Account<'info, NftStakeAccount>,
 
     /// The Mint of the rewarded token
     #[account(
@@ -400,22 +400,6 @@ pub struct StakeGmoot<'info> {
     )]
     pub nft_token_account: Account<'info, TokenAccount>,
 
-    // /// The metaplex metadata for the NFT, used to determine that the NFT is a GMoot
-    // #[account(
-    //     seeds = [&anchor_metaplex::PDAPrefix.as_bytes(), &anchor_metaplex::ID.to_bytes()[..], &nft_mint.key().to_bytes()],
-    //     bump = metadata_bump,
-    //     constraint = check_metadata(&*nft_metadata),
-    //     constraint = nft_metadata.mint == nft_mint.key(),
-    // )]
-    // pub nft_metadata: Account<'info, MetadataAccount>,
-    //
-    //
-    /// The account to hold the NFT while staked
-    // #[account(
-    //     mut,
-    //     address = get_associated_token_address(&stake_account.key(), &nft_mint.key()) @ StakingError::InvalidNFTVaultAddress
-    // )]
-    // pub nft_vault: Account<'info, TokenAccount>,
     pub token_program: Program<'info, Token>,
     pub system_program: Program<'info, System>,
     pub rent: Sysvar<'info, Rent>,
@@ -423,14 +407,14 @@ pub struct StakeGmoot<'info> {
 }
 
 #[derive(Accounts)]
-pub struct UnstakeGmoot<'info> {
+pub struct UnstakeNft<'info> {
     /// The owner of the stake account
     #[account(mut, signer)]
     pub owner: AccountInfo<'info>,
 
     /// The rewarder account for the collection
     #[account(mut)]
-    pub rewarder: Account<'info, GmootStakeRewarder>,
+    pub rewarder: Account<'info, NftStakeRewarder>,
 
     /// PDA that has the authority to mint reward tokens
     #[account(
@@ -447,7 +431,7 @@ pub struct UnstakeGmoot<'info> {
         seeds = [rewarder.collection.as_bytes(), &id().to_bytes(), ACCOUNT_PREFIX, &rewarder.key().to_bytes(), &owner.key().to_bytes()],
         bump = stake_account.bump,
     )]
-    pub stake_account: Account<'info, GmootStakeAccount>,
+    pub stake_account: Account<'info, NftStakeAccount>,
 
     /// The Mint of the rewarded token
     #[account(
@@ -491,7 +475,7 @@ pub struct Claim<'info> {
 
     /// The rewarder account for the collection
     #[account()]
-    pub rewarder: Account<'info, GmootStakeRewarder>,
+    pub rewarder: Account<'info, NftStakeRewarder>,
 
     /// The stake account for the owner
     #[account(
@@ -501,7 +485,7 @@ pub struct Claim<'info> {
         seeds = [rewarder.collection.as_bytes(), &id().to_bytes(), ACCOUNT_PREFIX, &rewarder.key().to_bytes(), &owner.key().to_bytes()],
         bump = stake_account.bump,
     )]
-    pub stake_account: Account<'info, GmootStakeAccount>,
+    pub stake_account: Account<'info, NftStakeAccount>,
 
     /// The Mint of the rewarded token
     #[account(
@@ -532,7 +516,7 @@ pub struct Claim<'info> {
 pub fn check_metadata<'a, 'b, 'c, 'info>(
     metadata: &'a Account<'info, MetadataAccount>,
     nft_mint_key: &'b Pubkey,
-    rewarder: &'c GmootStakeRewarder,
+    rewarder: &'c NftStakeRewarder,
 ) -> std::result::Result<(), ProgramError> {
     let (expected_address, _) = Pubkey::find_program_address(
         &[

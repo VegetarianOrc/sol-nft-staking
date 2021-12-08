@@ -504,16 +504,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "gmoot-staking"
-version = "0.1.0"
-dependencies = [
- "anchor-lang",
- "anchor-spl",
- "metaplex-token-metadata",
- "spl-token",
-]
-
-[[package]]
 name = "hashbrown"
 version = "0.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -969,6 +959,16 @@ dependencies = [
  "digest 0.9.0",
  "keccak",
  "opaque-debug",
+]
+
+[[package]]
+name = "sol-nft-staking"
+version = "0.1.0"
+dependencies = [
+ "anchor-lang",
+ "anchor-spl",
+ "metaplex-token-metadata",
+ "spl-token",
 ]
 
 [[package]]

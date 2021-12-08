@@ -1,12 +1,12 @@
 [package]
-name = "gmoot-staking"
+name = "sol-nft-staking"
 version = "0.1.0"
 description = "Created with Anchor"
 edition = "2018"
 
 [lib]
 crate-type = ["cdylib", "lib"]
-name = "gmoot_staking"
+name = "sol_nft_staking"
 
 [features]
 no-entrypoint = []

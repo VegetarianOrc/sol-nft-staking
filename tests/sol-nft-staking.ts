@@ -1,18 +1,18 @@
 import * as anchor from "@project-serum/anchor";
 import { Program } from "@project-serum/anchor";
-import { GmootStaking } from "../target/types/gmoot_staking";
+import { SolNftStaking } from "../target/types/sol_nft_staking";
 import * as splToken from "@solana/spl-token";
 import { expect } from "chai";
 import { programs, actions } from "@metaplex/js";
 import { Metadata } from "@metaplex-foundation/mpl-token-metadata";
 
-describe("gmoot-staking", () => {
+describe("sol-nft-staking", () => {
   // Configure the client to use the local cluster.
   anchor.setProvider(anchor.Provider.env());
   const provider = anchor.getProvider();
 
-  const gmootStakingProgram = anchor.workspace
-    .GmootStaking as Program<GmootStaking>;
+  const solNftStakingProgram = anchor.workspace
+    .SolNftStaking as Program<SolNftStaking>;
   const systemProgram = anchor.web3.SystemProgram.programId;
   const rentSysvar = anchor.web3.SYSVAR_RENT_PUBKEY;
   const clockSysvar = anchor.web3.SYSVAR_CLOCK_PUBKEY;
@@ -92,7 +92,7 @@ describe("gmoot-staking", () => {
       editionMint: mintkeypair.publicKey,
       updateAuthority: creator.publicKey,
       metadataData: new programs.metadata.MetadataDataData({
-        name: "gmoot bag #420",
+        name: "test #420",
         symbol: "",
         uri: "testing",
         sellerFeeBasisPoints: 0,
@@ -131,36 +131,36 @@ describe("gmoot-staking", () => {
   describe("end to end test", async () => {
     const owner = anchor.web3.Keypair.generate();
     const creator = anchor.web3.Keypair.generate();
-    const collectionName = "gmoot";
+    const collectionName = "test";
     const [rewarder, rewarderBump] =
       await anchor.web3.PublicKey.findProgramAddress(
         [
           Buffer.from(collectionName),
-          gmootStakingProgram.programId.toBuffer(),
+          solNftStakingProgram.programId.toBuffer(),
           Buffer.from("rewarder"),
         ],
-        gmootStakingProgram.programId
+        solNftStakingProgram.programId
       );
     const [rewardAuthority, rewardAuthorityBump] =
       await anchor.web3.PublicKey.findProgramAddress(
         [
           Buffer.from(collectionName),
-          gmootStakingProgram.programId.toBuffer(),
+          solNftStakingProgram.programId.toBuffer(),
           Buffer.from("rewarder"),
           rewarder.toBuffer(),
         ],
-        gmootStakingProgram.programId
+        solNftStakingProgram.programId
       );
     const [stakeAccount, stakeAccountBump] =
       await anchor.web3.PublicKey.findProgramAddress(
         [
           Buffer.from(collectionName),
-          gmootStakingProgram.programId.toBuffer(),
+          solNftStakingProgram.programId.toBuffer(),
           Buffer.from("stake_account"),
           rewarder.toBuffer(),
           owner.publicKey.toBuffer(),
         ],
-        gmootStakingProgram.programId
+        solNftStakingProgram.programId
       );
     const rewardRate = 10;
     let rewardMint = null;
@@ -204,7 +204,7 @@ describe("gmoot-staking", () => {
         { address: creator.publicKey, verified: true, share: 100 },
       ];
 
-      await gmootStakingProgram.rpc.initializeRewarder(
+      await solNftStakingProgram.rpc.initializeRewarder(
         rewarderBump,
         rewardAuthorityBump,
         new anchor.BN(rewardRate),
@@ -227,7 +227,7 @@ describe("gmoot-staking", () => {
     });
 
     it("initialized a stake account", async () => {
-      await gmootStakingProgram.rpc.initializeStakeAccount(stakeAccountBump, {
+      await solNftStakingProgram.rpc.initializeStakeAccount(stakeAccountBump, {
         accounts: {
           owner: owner.publicKey,
           stakeAccount,
@@ -241,7 +241,7 @@ describe("gmoot-staking", () => {
 
     it("stakes an NFT", async () => {
       const nftMetadata = await Metadata.getPDA(nftMint.publicKey);
-      await gmootStakingProgram.rpc.stakeGmoot({
+      await solNftStakingProgram.rpc.stakeNft({
         accounts: {
           owner: owner.publicKey,
           rewarder,
@@ -274,7 +274,7 @@ describe("gmoot-staking", () => {
       //wait to allow rewards to accumulate
       await sleep(provider.connection, seconds);
 
-      await gmootStakingProgram.rpc.claim({
+      await solNftStakingProgram.rpc.claim({
         accounts: {
           owner: owner.publicKey,
           rewarder,
@@ -300,7 +300,7 @@ describe("gmoot-staking", () => {
       //sleep one more second to check that we claim pending rewards on unstake
       await sleep(provider.connection, 1);
 
-      await gmootStakingProgram.rpc.unstakeGmoot({
+      await solNftStakingProgram.rpc.unstakeNft({
         accounts: {
           owner: owner.publicKey,
           rewarder,

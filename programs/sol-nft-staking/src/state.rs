@@ -15,7 +15,7 @@ where
 }
 
 #[account]
-pub struct GmootStakeRewarder {
+pub struct NftStakeRewarder {
     pub authority: Pubkey,
     pub reward_mint: Pubkey,
     pub reward_authority_bump: u8,
@@ -34,7 +34,7 @@ pub struct GmootStakeRewarder {
     pub total_staked: u32,
 }
 
-impl GmootStakeRewarder {
+impl NftStakeRewarder {
     pub fn calculate_len(num_creators: usize, collection: &str) -> usize {
         let mut size = size_of::<Pubkey>() * 3; //stored pubkeys
         size += 1; // authority bump
@@ -67,7 +67,7 @@ impl PartialEq<Creator> for &CreatorStruct {
 }
 
 #[account]
-pub struct GmootStakeAccount {
+pub struct NftStakeAccount {
     pub owner: Pubkey,
     pub rewarder: Pubkey,
     pub num_staked: u16,

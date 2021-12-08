@@ -1,5 +1,5 @@
 [programs.localnet]
-gmoot_staking = "D42AsUF2UbUcyBtK2Jvbym2ALfksvgeScNNtMg7KrSfj"
+sol_nft_staking = "D42AsUF2UbUcyBtK2Jvbym2ALfksvgeScNNtMg7KrSfj"
 
 [registry]
 url = "https://anchor.projectserum.com"
