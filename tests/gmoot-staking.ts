@@ -1,9 +1,10 @@
 import * as anchor from "@project-serum/anchor";
 import { Program } from "@project-serum/anchor";
-import * as borsh from "borsh";
 import { GmootStaking } from "../target/types/gmoot_staking";
 import * as splToken from "@solana/spl-token";
 import { expect } from "chai";
+import { programs, actions } from "@metaplex/js";
+import { Metadata } from "@metaplex-foundation/mpl-token-metadata";
 
 describe("gmoot-staking", () => {
   // Configure the client to use the local cluster.
@@ -18,30 +19,112 @@ describe("gmoot-staking", () => {
 
   const mintNFT = async (
     connection: anchor.web3.Connection,
-    owner: anchor.web3.Signer
+    owner: anchor.web3.Keypair,
+    creator: anchor.web3.Keypair
   ): Promise<[splToken.Token, anchor.web3.PublicKey]> => {
     console.log("creating NFT mint");
-    const nftMint = await splToken.Token.createMint(
-      connection,
-      owner,
+
+    const mintkeypair = anchor.web3.Keypair.generate();
+    const mintBalance = await splToken.Token.getMinBalanceRentForExemptMint(
+      connection
+    );
+
+    const tx = new anchor.web3.Transaction();
+    //add create account instruction
+    tx.add(
+      anchor.web3.SystemProgram.createAccount({
+        fromPubkey: owner.publicKey,
+        newAccountPubkey: mintkeypair.publicKey,
+        lamports: mintBalance,
+        space: splToken.MintLayout.span,
+        programId: splToken.TOKEN_PROGRAM_ID,
+      })
+    );
+    //add init mint instruction
+    tx.add(
+      splToken.Token.createInitMintInstruction(
+        splToken.TOKEN_PROGRAM_ID,
+        mintkeypair.publicKey,
+        0,
+        owner.publicKey,
+        null
+      )
+    );
+
+    //add create token account instruction
+    const nftTokenAccount = await splToken.Token.getAssociatedTokenAddress(
+      splToken.ASSOCIATED_TOKEN_PROGRAM_ID,
+      splToken.TOKEN_PROGRAM_ID,
+      mintkeypair.publicKey,
       owner.publicKey,
-      null,
-      0,
-      splToken.TOKEN_PROGRAM_ID
+      false
     );
-    const nftTokenAccount = await nftMint.createAssociatedTokenAccount(
-      owner.publicKey
+    tx.add(
+      splToken.Token.createAssociatedTokenAccountInstruction(
+        splToken.ASSOCIATED_TOKEN_PROGRAM_ID,
+        splToken.TOKEN_PROGRAM_ID,
+        mintkeypair.publicKey,
+        nftTokenAccount,
+        owner.publicKey,
+        owner.publicKey
+      )
     );
-    console.log("minting nft");
-    await nftMint.mintTo(nftTokenAccount, owner, [], 1);
-    console.log("removing mint authority");
-    await nftMint.setAuthority(
-      nftMint.publicKey,
-      null,
-      "MintTokens",
-      owner,
-      []
+
+    //add mint to instruction
+    tx.add(
+      splToken.Token.createMintToInstruction(
+        splToken.TOKEN_PROGRAM_ID,
+        mintkeypair.publicKey,
+        nftTokenAccount,
+        owner.publicKey,
+        [],
+        1
+      )
     );
+
+    const txSig = await connection.sendTransaction(tx, [owner, mintkeypair]);
+    await connection.confirmTransaction(txSig, "confirmed");
+
+    //create metadata
+    const metadataTx = await actions.createMetadata({
+      connection,
+      wallet: new anchor.Wallet(owner),
+      editionMint: mintkeypair.publicKey,
+      updateAuthority: creator.publicKey,
+      metadataData: new programs.metadata.MetadataDataData({
+        name: "gmoot bag #420",
+        symbol: "",
+        uri: "testing",
+        sellerFeeBasisPoints: 0,
+        creators: [
+          new programs.metadata.Creator({
+            address: creator.publicKey.toBase58(),
+            verified: false,
+            share: 100,
+          }),
+        ],
+      }),
+    });
+    await connection.confirmTransaction(metadataTx, "confirmed");
+
+    const signTx = await actions.signMetadata({
+      connection,
+      editionMint: mintkeypair.publicKey,
+      wallet: new anchor.Wallet(owner),
+      signer: creator,
+    });
+    await connection.confirmTransaction(signTx, "confirmed");
+
+    const nftMint = new splToken.Token(
+      connection,
+      mintkeypair.publicKey,
+      splToken.TOKEN_PROGRAM_ID,
+      owner
+    );
+
+    //remove minting authority
+    nftMint.setAuthority(mintkeypair.publicKey, null, "MintTokens", owner, []);
+
     return [nftMint, nftTokenAccount];
   };
 
@@ -109,7 +192,11 @@ describe("gmoot-staking", () => {
       );
 
       console.log("minting NFT");
-      [nftMint, nftTokenAccount] = await mintNFT(provider.connection, owner);
+      [nftMint, nftTokenAccount] = await mintNFT(
+        provider.connection,
+        owner,
+        creator
+      );
     });
 
     it("initializes a rewarder", async () => {
@@ -124,7 +211,7 @@ describe("gmoot-staking", () => {
         Buffer.from(collectionName),
         creators,
         creator.publicKey,
-        false,
+        true,
         {
           accounts: {
             rewarder: rewarder,
@@ -153,6 +240,7 @@ describe("gmoot-staking", () => {
     });
 
     it("stakes an NFT", async () => {
+      const nftMetadata = await Metadata.getPDA(nftMint.publicKey);
       await gmootStakingProgram.rpc.stakeGmoot({
         accounts: {
           owner: owner.publicKey,
@@ -168,6 +256,9 @@ describe("gmoot-staking", () => {
           rent: rentSysvar,
           clock: clockSysvar,
         },
+        remainingAccounts: [
+          { pubkey: nftMetadata, isSigner: false, isWritable: false },
+        ],
         signers: [owner],
       });
 

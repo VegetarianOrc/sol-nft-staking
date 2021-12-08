@@ -9,7 +9,12 @@ cluster = "localnet"
 wallet = "./test-keypair.json"
 
 [test]
-clone = [{address = "metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s"}]
+# Clone the metadata program and the executable account associated with it
+# for use in integration tests
+clone = [
+  {address = "metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s"}, 
+  {address = "PwDiXFxQsGra4sFFTT8r1QWRMd4vfumiWC1jfWNfdYT"}
+]
 validator = {url = "mainnet-beta"}
 
 [scripts]
