@@ -6,7 +6,7 @@ import * as fs from "fs";
 import * as splToken from "@solana/spl-token";
 
 const SOL_NFT_STAKING_PROGRAM_ID = new web3.PublicKey(
-  "D42AsUF2UbUcyBtK2Jvbym2ALfksvgeScNNtMg7KrSfj"
+  "3zPPaZhN3tAkSJhjcEcyT7kAM6b2stQmJf65Fw9sMZa3"
 );
 
 const systemProgram = anchor.web3.SystemProgram.programId;

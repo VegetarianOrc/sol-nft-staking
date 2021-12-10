@@ -14,7 +14,7 @@ use state::*;
 const REWARDER_PREFIX: &[u8] = b"rewarder";
 const ACCOUNT_PREFIX: &[u8] = b"stake_account";
 
-declare_id!("D42AsUF2UbUcyBtK2Jvbym2ALfksvgeScNNtMg7KrSfj");
+declare_id!("3zPPaZhN3tAkSJhjcEcyT7kAM6b2stQmJf65Fw9sMZa3");
 
 #[program]
 pub mod sol_nft_staking {
