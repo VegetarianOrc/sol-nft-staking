@@ -10,7 +10,7 @@ This repo contains the [Anchor](https://github.com/project-serum/anchor) program
 
 | Cluster | Address                                      |
 | ------- | -------------------------------------------- |
-| devnet  | D42AsUF2UbUcyBtK2Jvbym2ALfksvgeScNNtMg7KrSfj |
+| devnet  | 3zPPaZhN3tAkSJhjcEcyT7kAM6b2stQmJf65Fw9sMZa3 |
 
 ## Overview
 
@@ -77,19 +77,7 @@ Options:
 
 ### Stake Accounts
 
-The user **Stake Account** is a [PDA](https://docs.solana.com/developing/programming-model/calling-between-programs#program-derived-addresses) stores the information that is used to calculate the earned rewards for the total number of staked NFTs for the owner. The **Stake Account** holds any locked up NFTs at the [Associated Token Account address](https://spl.solana.com/associated-token-account#finding-the-associated-token-account-address) for the NFT Mint making it easy to list any staked NFTs in the same way you would for another wallet, given the stake account address. The following Typescript code can be used to find the associated token address for the Stake Account:
-
-```typescript
-import * as splToken from "@solana/spl-token";
-
-const tokenAccountAddress = await splToken.Token.getAssociatedTokenAddress(
-  splToken.ASSOCIATED_TOKEN_PROGRAM_ID,
-  splToken.TOKEN_PROGRAM_ID,
-  mint, //the pubkey for the NFT Mint
-  stakeAccount, // the pubkey for the stake account
-  true //allows the owner of the associated token account to be a PDA.
-);
-```
+The user **Stake Account** is a [PDA](https://docs.solana.com/developing/programming-model/calling-between-programs#program-derived-addresses) stores the information that is used to calculate the earned rewards for the total number of staked NFTs for the owner. The **Stake Account** holds any locked up NFTs and allows integrations to list any staked NFTs in the same way you would for another wallet, given the stake account address.
 
 The Stake Account address is calculated using the following seeds:
 
