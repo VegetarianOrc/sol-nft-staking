@@ -36,7 +36,7 @@ Rewarders are created per collection at the [Program Derived Address](https://do
 
 To ensure that only NFTs from the desired collection can earn rewards the protocol inspects associated [Metaplex Token Metadata](https://docs.metaplex.com/architecture/contracts#token-metadata) for staked NFTs. When `enforceMetadata` is set to true, the protocol will compare 3 fields from the metadata to verify authenticity:
 
-- UpdateAutority
+- UpdateAuthority
 - Creators
 - Collection Name
 
